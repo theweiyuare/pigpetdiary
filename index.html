@@ -318,18 +318,33 @@ function exportCSV() {
 }
 
 function manualResetMonth() {
-  if (!confirm('確定要結算這個月嗎？\n結算後剩餘會進入累積撲滿')) {
+  if (!confirm('確定要結算這個月嗎？\n結算後剩餘會進入累積撲滿，且本月將鎖定不再重複結算')) {
     return;
   }
+
   const m = getViewMonthKey();
+
+  // 檢查是否已經結算過，避免重複加錢
+  const settledMonths = JSON.parse(localStorage.getItem("settledMonths")) || [];
+  if (settledMonths.includes(m)) {
+    alert("⚠️ 這個月已經結算過，無法重複結算");
+    return;
+  }
+
+  // 計算本月剩餘並加入撲滿
   const list = rawData.filter(x => getMonthKey(x.date) === m);
-  let total=0; list.forEach(x => total += x.me + x.he);
+  let total = 0;
+  list.forEach(x => total += x.me + x.he);
   const left = 12000 - total;
   balanceTotal += left;
-  alert("✅ 換月結算！\n本月結餘："+left+" 元已累積至結餘累計撲滿\n🐖 目前累積："+balanceTotal+" 元");
+
+  // 記錄這個月已經結算
+  settledMonths.push(m);
+  localStorage.setItem("settledMonths", JSON.stringify(settledMonths));
+
+  alert("✅ 換月結算完成！\n本月結餘：" + left + " 元已累積至撲滿\n🐖 目前累計：" + balanceTotal + " 元");
   saveAll();
 }
-
 function saveAll() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rawData));
   localStorage.setItem(BALANCE_KEY, balanceTotal);
