@@ -148,7 +148,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <button onclick="add()">新增記錄</button>
   <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV</button>
   <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算</button>
-  <button class="gray-btn" onclick="recalculateBalance()" style="margin-top:4px;background:#4caf50">🧮 重新計算正確撲滿</button>
+  <button class="gray-btn" onclick="recalculateBalance()" style="margin-top:4px;background:#fff">🧮 重新計算正確撲滿</button>
 </div>
 
 <div class="card">
@@ -268,10 +268,10 @@ function add() {
   let me = +document.getElementById("amtMe").value || 0;
   let he = +document.getElementById("amtHe").value || 0;
 
-  if (!date || !shop) {
-    alert("請填完整");
-    return;
-  }
+if (!date) {
+  alert("請選擇日期");
+  return;
+}
   if (me + he === 0) {
     alert("金額不可為0");
     return;
