@@ -318,6 +318,9 @@ function exportCSV() {
 }
 
 function manualResetMonth() {
+  if (!confirm('確定要結算這個月嗎？\n結算後剩餘會進入累積撲滿')) {
+    return;
+  }
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m);
   let total=0; list.forEach(x => total += x.me + x.he);
