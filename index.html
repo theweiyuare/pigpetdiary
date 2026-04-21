@@ -182,18 +182,6 @@ cateBtns.forEach(btn => {
   });
 });
 
-// 付款方式切換
-const payBtns = document.querySelectorAll(".pay-btn");
-payBtns.forEach(btn => {
-  btn.addEventListener("click", () => {
-    payBtns.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    payType = btn.dataset.type;
-    document.getElementById("singleArea").style.display = payType === "split" ? "none" : "block";
-    document.getElementById("splitArea").style.display = payType === "split" ? "flex" : "none";
-  });
-});
-
 // 月份標籤
 function updateMonthLabel() {
   const y = currentView.getFullYear();
