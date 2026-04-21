@@ -7,24 +7,28 @@
 <style>
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system;background:#fff9f9;margin:0;padding:16px;color:#222}
-.card{background:white;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px #0001}
+.card{background:white;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px #f0dce5}
 h2{margin-top:4px;color:#c75d77}
 .label{font-size:14px;color:#666;margin-top:8px}
 input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-top:4px;font-size:16px}
 input[type="date"] {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  appearance: none;
+  width:100%!important;max-width:100%!important;box-sizing:border-box!important;appearance:none;
 }
 button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .gray-btn{background:#eee;color:#333}
-.split{display:flex;gap:8px;margin-top:4px}
+.del-btn{background:#ff9f9f;color:#fff;border:0;border-radius:8px;padding:4px 8px;font-size:12px}
+.split{display:flex;gap:8px}
 .split input{flex:1}
+
+/* 付款方式按鈕列 */
+.pay-row{display:flex;gap:8px;margin-top:4px}
+.pay-btn{flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f9f9f9;color:#333}
+.pay-btn.active{background:#f06d8a;color:white}
+
 .total{font-size:17px;font-weight:600;margin:4px 0}
 .highlight{color:#f06d8a}
 .balance{font-size:18px;font-weight:700;color:#e05686}
-.item{padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
+.item{padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px;display:flex;justify-content:space-between;align-items:center}
 .cat{color:#888;font-size:13px}
 .gray{color:#555}
 </style>
@@ -33,13 +37,17 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 
 <div class="card">
   <h2>養豬週記🐽</h2>
-  <div class="total">本月預算：<span class="highlight">12,000</span> 元</div>
-  <div class="total">已花費：<span id="total" class="highlight">0</span> 元</div>
-  <div class="total">本月剩餘：<span id="left" class="highlight">12000</span> 元</div>
 
-  <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0">
+  <div class="label">查看月份</div>
+  <input id="viewMonth" type="month">
+
+  <div class="total">本月預算：<span class="highlight">12,000</span> 元</div>
+  <div class="total">該月花費：<span id="total" class="highlight">0</span> 元</div>
+  <div class="total">該月剩餘：<span id="left" class="highlight">12000</span> 元</div>
+
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0dce5">
     <div class="balance">🎁 節日累積結餘：<span id="balanceTotal">0</span> 元</div>
-    <div style="font-size:14px;color:#666;margin-top:4px">可保留到節日使用</div>
+    <div style="font-size:14px;color:#666">可保留到節日使用</div>
   </div>
 
   <div style="margin-top:12px;font-size:15px">
@@ -67,22 +75,22 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   </select>
 
   <div class="label">付款方式</div>
-  <select id="payType">
-    <option value="oneMe">我全付</option>
-    <option value="oneHe">他全付</option>
-    <option value="split">兩人湊零錢（分開填）</option>
-  </select>
+  <div class="pay-row">
+    <button class="pay-btn active" data-type="oneMe">我全付</button>
+    <button class="pay-btn" data-type="oneHe">他全付</button>
+    <button class="pay-btn" data-type="split">兩人分攤</button>
+  </div>
 
-  <div id="singleArea">
+  <div id="singleArea" style="margin-top:12px">
     <div class="label">金額</div>
     <input id="singleAmt" type="number" placeholder="輸入金額">
   </div>
 
-  <div id="splitArea" style="display:none">
+  <div id="splitArea" style="display:none;margin-top:12px">
     <div class="label">我出 / 他出</div>
     <div class="split">
-      <input id="amtMe" type="number" placeholder="我出">
-      <input id="amtHe" type="number" placeholder="他出">
+      <input id="amtMe" placeholder="我出">
+      <input id="amtHe" placeholder="他出">
     </div>
   </div>
 
@@ -92,37 +100,57 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 </div>
 
 <div class="card">
-  <h3>📝 記錄（本月）</h3>
+  <h3>📝 記錄</h3>
   <div id="list"></div>
 </div>
 
 <script>
 const STORAGE_KEY = "ourPigLog";
-const LAST_RESET_KEY = "lastResetMonth";
 const BALANCE_KEY = "pigBalanceTotal";
 
 let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-let balanceTotal = parseInt(localStorage.getItem(BALANCE_KEY)) || 0;
+let balanceTotal = +localStorage.getItem(BALANCE_KEY) || 0;
+let payType = "oneMe";
 
-document.getElementById("datePick").valueAsDate = new Date();
+// 今天日期
+const today = new Date();
+document.getElementById("datePick").valueAsDate = today;
 
-function getThisMonthRecords() {
-  const now = new Date();
-  const cy = now.getFullYear(), cm = now.getMonth();
-  return rawData.filter(x => {
-    const d = new Date(x.date);
-    return d.getFullYear() === cy && d.getMonth() === cm;
+// 查看月份
+const thisMonth = today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,'0');
+const viewMonth = document.getElementById("viewMonth");
+viewMonth.value = thisMonth;
+viewMonth.addEventListener("change", render);
+
+// 付款按鈕切換
+const payBtns = document.querySelectorAll(".pay-btn");
+payBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    payBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    payType = btn.dataset.type;
+
+    if (payType === "split") {
+      document.getElementById("singleArea").style.display = "none";
+      document.getElementById("splitArea").style.display = "block";
+    } else {
+      document.getElementById("singleArea").style.display = "block";
+      document.getElementById("splitArea").style.display = "none";
+    }
   });
+});
+
+function getMonthKey(dateStr) {
+  const d = new Date(dateStr);
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,'0');
 }
 
 function cal() {
-  const curr = getThisMonthRecords();
-  let total = 0, me = 0, he = 0;
-  curr.forEach(x => { total += x.me + x.he; me += x.me; he += x.he });
-
-  const budget = 12000;
-  const left = budget - total;
-
+  const m = viewMonth.value;
+  const list = rawData.filter(x => getMonthKey(x.date) === m);
+  let total=0, me=0, he=0;
+  list.forEach(x => { total+=x.me+x.he; me+=x.me; he+=x.he; });
+  const left = 12000 - total;
   document.getElementById("total").textContent = total;
   document.getElementById("left").textContent = left;
   document.getElementById("meTotal").textContent = me;
@@ -131,57 +159,60 @@ function cal() {
 }
 
 function render() {
-  const curr = getThisMonthRecords().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const m = viewMonth.value;
+  const list = rawData.filter(x => getMonthKey(x.date) === m)
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
   let html = "";
-  curr.forEach(x => {
-    const d = new Date(x.date);
-    const dateStr = `${d.getMonth()+1}/${d.getDate()}`;
+  list.forEach((x, i) => {
+    const ds = new Date(x.date);
+    const dateStr = `${ds.getMonth()+1}/${ds.getDate()}`;
     html += `
     <div class="item">
-      ${dateStr}｜<b>${x.shop}</b>
-      <div class="cat">${x.cate}</div>
-      我：${x.me}　他：${x.he}
+      <div>
+        ${dateStr}｜<b>${x.shop}</b>
+        <div class="cat">${x.cate}</div>
+        我：${x.me}　他：${x.he}
+      </div>
+      <button class="del-btn" onclick="del(${i})">刪除</button>
     </div>`;
   });
   document.getElementById("list").innerHTML = html;
   cal();
 }
 
-const payType = document.getElementById("payType");
-const singleArea = document.getElementById("singleArea");
-const splitArea = document.getElementById("splitArea");
-payType.addEventListener("change", () => {
-  if (payType.value === "split") {
-    singleArea.style.display = "none";
-    splitArea.style.display = "block";
-  } else {
-    singleArea.style.display = "block";
-    splitArea.style.display = "none";
-  }
-});
+function del(idx) {
+  if(!confirm("確定刪除？")) return;
+  const m = viewMonth.value;
+  const list = rawData.filter(x => getMonthKey(x.date) === m);
+  const item = list[idx];
+  rawData = rawData.filter(x =>
+    !(x.date===item.date && x.shop===item.shop && x.cate===item.cate && x.me===item.me && x.he===item.he)
+  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rawData));
+  render();
+}
 
 function add() {
   const date = document.getElementById("datePick").value;
   const shop = document.getElementById("shop").value.trim();
   const cate = document.getElementById("cate").value;
-  const type = payType.value;
-  let me = 0, he = 0;
+  let me=0, he=0;
 
-  if (!date) return alert("請選日期");
-  if (!shop) return alert("請填店家");
+  if(!date) return alert("請選日期");
+  if(!shop) return alert("請填店家");
 
-  if (type === "oneMe") {
-    me = parseInt(document.getElementById("singleAmt").value) || 0;
-  } else if (type === "oneHe") {
-    he = parseInt(document.getElementById("singleAmt").value) || 0;
-  } else {
-    me = parseInt(document.getElementById("amtMe").value) || 0;
-    he = parseInt(document.getElementById("amtHe").value) || 0;
+  if(payType === "oneMe"){
+    me = +document.getElementById("singleAmt").value || 0;
+  }else if(payType === "oneHe"){
+    he = +document.getElementById("singleAmt").value || 0;
+  }else{
+    me = +document.getElementById("amtMe").value || 0;
+    he = +document.getElementById("amtHe").value || 0;
   }
 
-  if (me + he === 0) return alert("金額不能為0");
+  if(me + he === 0) return alert("金額不可為0");
 
-  rawData.push({ date, shop, cate, me, he });
+  rawData.push({date, shop, cate, me, he});
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rawData));
 
   document.getElementById("shop").value = "";
@@ -193,33 +224,23 @@ function add() {
 
 function exportCSV() {
   const header = "日期,店家,分類,我出,他出,總計\n";
-  const rows = rawData.map(x => {
-    const sum = x.me + x.he;
-    return `${x.date},${x.shop},${x.cate},${x.me},${x.he},${sum}`;
-  }).join("\n");
-  const blob = new Blob([header + rows], { type: "text/csv" });
+  const rows = rawData.map(x => `${x.date},${x.shop},${x.cate},${x.me},${x.he},${x.me+x.he}`);
+  const blob = new Blob([header + rows.join("\n")], {type:"text/csv"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = "養豬週記_" + new Date().toISOString().slice(0,10) + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  a.href=url; a.download="養豬週記_"+new Date().toISOString().slice(0,10)+".csv";
+  a.click(); URL.revokeObjectURL(url);
 }
 
-// 換月結算 → 本月剩餘併入累積結餘
 function manualResetMonth() {
-  const now = new Date();
-  const curr = getThisMonthRecords();
-  let total = 0;
-  curr.forEach(x => total += x.me + x.he);
-
-  const leftThisMonth = 12000 - total;
-  balanceTotal += leftThisMonth;
+  const m = viewMonth.value;
+  const list = rawData.filter(x => getMonthKey(x.date) === m);
+  let total=0; list.forEach(x => total += x.me + x.he);
+  const left = 12000 - total;
+  balanceTotal += left;
   localStorage.setItem(BALANCE_KEY, balanceTotal);
-
-  localStorage.setItem(LAST_RESET_KEY, `${now.getFullYear()}-${now.getMonth()+1}`);
-  alert("✅ 換月完成！\n本月剩餘 " + leftThisMonth + " 元已併入節日結餘\n🎁 目前累積：" + balanceTotal + " 元");
-  render();
+  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已加入節日基金\n🎁 目前累積："+balanceTotal+" 元");
+  cal();
 }
 
 cal();
