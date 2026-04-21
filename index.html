@@ -70,6 +70,29 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 }
 .cat{color:#888;font-size:13px}
 .gray{color:#555}
+
+.cate-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cate-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #f9f9f9;
+  font-size: 14px;
+  cursor: pointer;
+}
+.cate-btn.active {
+  background: #f06d8a;
+  color: #fff;
+  border-color: #f06d8a;
+}  
+  
 </style>
 </head>
 <body>
@@ -105,16 +128,17 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <div class="label">店家 / 內容</div>
   <input id="shop" placeholder="ex：清河鵝肉 / 龜記">
 
-  <div class="label">分類</div>
-  <select id="cate">
-    <option value="早餐">早餐</option>
-    <option value="午餐">午餐</option>
-    <option value="晚餐">晚餐</option>
-    <option value="水">水</option>
-    <option value="飲料">飲料</option>
-    <option value="加油">加油</option>
-    <option value="其他">其他</option>
-  </select>
+<div class="label">分類</div>
+<div class="cate-row">
+  <button class="cate-btn" data-cate="早餐">早餐</button>
+  <button class="cate-btn" data-cate="午餐">午餐</button>
+  <button class="cate-btn" data-cate="晚餐">晚餐</button>
+  <button class="cate-btn" data-cate="點心">點心</button>
+  <button class="cate-btn" data-cate="飲料">飲料</button>
+  <button class="cate-btn" data-cate="水">水</button>
+  <button class="cate-btn" data-cate="加油">加油</button>
+  <button class="cate-btn" data-cate="其他">其他</button>
+</div>
 
   <div class="label">付款方式</div>
   <div class="pay-row">
@@ -243,10 +267,23 @@ payBtns.forEach(btn => {
   });
 });
 
+// 分類按鈕切換
+let cate = "早餐";
+const cateBtns = document.querySelectorAll(".cate-btn");
+cateBtns[0].classList.add("active"); // 預設選早餐
+
+cateBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    cateBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    cate = btn.dataset.cate;
+  });
+});
+  
 function add() {
   const date = document.getElementById("datePick").value;
   const shop = document.getElementById("shop").value.trim();
-  const cate = document.getElementById("cate").value;
+  // const cate = document.getElementById("cate").value;
   let me=0, he=0;
   if(!date)return alert("請選日期");
   if(!shop)return alert("請填店家");
