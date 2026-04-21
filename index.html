@@ -223,12 +223,7 @@ function render() {
 
 function del(idx) {
   if(!confirm("確定刪除？")) return;
-  const m = getViewMonthKey();
-  const list = rawData.filter(x => getMonthKey(x.date) === m);
-  const item = list[idx];
-  rawData = rawData.filter(x =>
-    !(x.date===item.date && x.shop===item.shop && x.cate===item.cate && x.me===item.me && x.he===item.he)
-  );
+  rawData.splice(idx, 1); // 直接刪 rawData 第 idx 筆，不會抓錯
   saveAll();
 }
 
