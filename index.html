@@ -21,7 +21,21 @@ input[type="date"] {
 
 button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .gray-btn{background:#eee;color:#333}
-.del-btn{background:#ff9f9f;color:#fff;border:0;border-radius:8px;padding:4px 8px;font-size:12px}
+
+/* 更小、靠左、直式刪除按鈕 */
+.del-btn{
+  background:#ff9f9f;
+  color:#fff;
+  border:0;
+  border-radius:6px;
+  padding:2px 4px;
+  font-size:10px;
+  writing-mode:vertical-rl;
+  text-orientation:upright;
+  margin-right:6px;
+  height:36px;
+}
+
 .split{display:flex;gap:8px}
 .split input{flex:1}
 
@@ -29,15 +43,15 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .pay-btn{flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f9f9f9;color:#333}
 .pay-btn.active{background:#f06d8a;color:white}
 
-/* 精簡版月份箭頭 */
+/* 精簡月份箭頭 */
 .month-nav{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0}
 .month-arrow{
   background:#f06d8a;
   color:white;
   border:none;
   border-radius:8px;
-  padding:6px 10px; /* 更小的內距 */
-  font-size:14px;   /* 字體縮小 */
+  padding:6px 10px;
+  font-size:14px;
   width:auto;
   min-width:36px;
 }
@@ -46,7 +60,13 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .total{font-size:17px;font-weight:600;margin:4px 0}
 .highlight{color:#f06d8a}
 .balance{font-size:18px;font-weight:700;color:#e05686}
-.item{padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.item{
+  padding:10px 0;
+  border-bottom:1px solid #f0dce5;
+  font-size:15px;
+  display:flex;
+  align-items:center;
+}
 .cat{color:#888;font-size:13px}
 .gray{color:#555}
 </style>
@@ -67,8 +87,8 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <div class="total">該月剩餘：<span id="left" class="highlight">12000</span> 元</div>
 
   <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0dce5">
-    <div class="balance">🎁 節日累積結餘：<span id="balanceTotal">0</span> 元</div>
-    <div style="font-size:14px;color:#666">可保留到節日使用</div>
+    <div class="balance">🧧 共同存錢筒：<span id="balanceTotal">0</span> 元</div>
+    <div style="font-size:14px;color:#666">每月結餘存入，可正可負可運用</div>
   </div>
 
   <div style="margin-top:12px;font-size:15px">
@@ -117,7 +137,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 
   <button onclick="add()">新增記錄</button>
   <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV 備份</button>
-  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（累積餘額）</button>
+  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（存入存錢筒）</button>
 </div>
 
 <div class="card">
@@ -133,17 +153,14 @@ let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 let balanceTotal = +localStorage.getItem(BALANCE_KEY) || 0;
 let payType = "oneMe";
 
-// 當前顯示年月
 let currentView = new Date();
 
-// 日期選擇後自動關閉
 const datePick = document.getElementById("datePick");
 datePick.valueAsDate = new Date();
 datePick.addEventListener("change", () => {
   document.activeElement.blur();
 });
 
-// 月份翻頁
 function updateMonthLabel() {
   const y = currentView.getFullYear();
   const m = String(currentView.getMonth() + 1).padStart(2, '0');
@@ -161,20 +178,17 @@ function nextMonth() {
   updateMonthLabel();
 }
 
-// 取得當前檢視月份的 key
 function getViewMonthKey() {
   const y = currentView.getFullYear();
   const m = currentView.getMonth() + 1;
   return `${y}-${String(m).padStart(2, '0')}`;
 }
 
-// 比對紀錄屬於哪個月
 function getMonthKey(dateStr) {
   const d = new Date(dateStr);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
-// 計算金額
 function cal() {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m);
@@ -188,7 +202,6 @@ function cal() {
   document.getElementById("balanceTotal").textContent = balanceTotal;
 }
 
-// 繪製清單
 function render() {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m)
@@ -199,19 +212,19 @@ function render() {
     const dateStr = `${ds.getMonth()+1}/${ds.getDate()}`;
     html += `
     <div class="item">
+      <button class="del-btn" onclick="del(${i})">刪
+除</button>
       <div>
         ${dateStr}｜<b>${x.shop}</b>
         <div class="cat">${x.cate}</div>
         我：${x.me}　他：${x.he}
       </div>
-      <button class="del-btn" onclick="del(${i})">刪除</button>
     </div>`;
   });
   document.getElementById("list").innerHTML = html;
   cal();
 }
 
-// 刪除
 function del(idx) {
   if(!confirm("確定刪除？")) return;
   const m = getViewMonthKey();
@@ -224,7 +237,6 @@ function del(idx) {
   render();
 }
 
-// 付款按鈕切換
 const payBtns = document.querySelectorAll(".pay-btn");
 payBtns.forEach(btn => {
   btn.addEventListener("click", () => {
@@ -242,7 +254,6 @@ payBtns.forEach(btn => {
   });
 });
 
-// 新增紀錄
 function add() {
   const date = document.getElementById("datePick").value;
   const shop = document.getElementById("shop").value.trim();
@@ -273,7 +284,6 @@ function add() {
   render();
 }
 
-// 匯出 CSV
 function exportCSV() {
   const header = "日期,店家,分類,我出,他出,總計\n";
   const rows = rawData.map(x => `${x.date},${x.shop},${x.cate},${x.me},${x.he},${x.me+x.he}`);
@@ -285,7 +295,6 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-// 換月結算
 function manualResetMonth() {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m);
@@ -294,11 +303,10 @@ function manualResetMonth() {
   const left = 12000 - total;
   balanceTotal += left;
   localStorage.setItem(BALANCE_KEY, balanceTotal);
-  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已加入節日基金\n🎁 目前累積："+balanceTotal+" 元");
+  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已存入共同存錢筒\n🧧 目前累積："+balanceTotal+" 元");
   cal();
 }
 
-// 初始化
 updateMonthLabel();
 </script>
 </body>
