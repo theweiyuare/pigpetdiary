@@ -103,7 +103,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <input id="datePick" type="date">
 
   <div class="label">店家 / 內容</div>
-  <input id="shop" placeholder="ex：清河鵝 / 龜記">
+  <input id="shop" placeholder="ex：清河鵝肉 / 龜記">
 
   <div class="label">分類</div>
   <select id="cate">
@@ -290,7 +290,7 @@ function manualResetMonth() {
   let total=0; list.forEach(x => total += x.me + x.he);
   const left = 12000 - total;
   balanceTotal += left;
-  alert("✅ 換月結算！\n本月結餘："+left+" 元已累積為墊底額度\n🧧 目前總累積："+balanceTotal+" 元");
+  alert("✅ 換月結算！\n本月結餘："+left+" 元已累積至結餘累計撲滿\n🐖 目前累積："+balanceTotal+" 元");
   saveAll();
 }
 
