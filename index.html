@@ -82,7 +82,6 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   padding:10px;
   border:1px solid #ddd;
   border-radius:10px;
-  color:#333;
   background:#f9f9f9;
   font-size:14px;
 }
@@ -159,8 +158,9 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   </div>
 
   <button onclick="add()">新增記錄</button>
-  <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV 備份</button>
-  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（累積墊底）</button>
+  <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV</button>
+  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算</button>
+  <button class="gray-btn" onclick="recalculateBalance()" style="margin-top:4px;background:#4caf50">🧮 重新計算正確撲滿</button>
 </div>
 
 <div class="card">
@@ -171,6 +171,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 <script>
 const STORAGE_KEY = "ourPigLog";
 const BALANCE_KEY = "pigBalanceTotal";
+const MONTHLY_BUDGET = 12000;
 
 let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
 let balanceTotal = +localStorage.getItem(BALANCE_KEY) || 0;
@@ -242,7 +243,7 @@ function cal() {
     he += x.he;
   });
   document.getElementById("total").textContent = total;
-  document.getElementById("left").textContent = 12000 - total;
+  document.getElementById("left").textContent = MONTHLY_BUDGET - total;
   document.getElementById("meTotal").textContent = me;
   document.getElementById("heTotal").textContent = he;
   document.getElementById("balanceTotal").textContent = balanceTotal;
@@ -270,18 +271,14 @@ function render() {
   cal();
 }
 
-// 刪除（正確版：點誰刪誰）
+// 刪除（正確版）
 function del(idx) {
   if(!confirm("確定刪除？")) return;
   const m = getViewMonthKey();
   const currentList = rawData.filter(x => getMonthKey(x.date) === m);
   const target = currentList[idx];
   const realIndex = rawData.findIndex(x => 
-    x.date === target.date &&
-    x.shop === target.shop &&
-    x.cate === target.cate &&
-    x.me === target.me &&
-    x.he === target.he
+    x.date === target.date && x.shop === target.shop && x.cate === target.cate && x.me === target.me && x.he === target.he
   );
   if(realIndex !== -1) rawData.splice(realIndex, 1);
   saveAll();
@@ -323,29 +320,45 @@ function saveAll() {
   render();
 }
 
-// 結算（防重複、防灌水）
+// 結算（防重複）
 function manualResetMonth() {
-  if (!confirm("確定要結算這個月嗎？\n每個月只能結算一次喔")) return;
-
+  if (!confirm("確定結算這個月？每月只可一次")) return;
   const m = getViewMonthKey();
   let settled = JSON.parse(localStorage.getItem("settledMonths")) || [];
-
   if (settled.includes(m)) {
-    alert("⚠️ 這個月已經結算過，無法重複結算");
+    alert("已結算過");
     return;
   }
-
   const list = rawData.filter(x => getMonthKey(x.date) === m);
   let total = 0;
   list.forEach(x => total += x.me + x.he);
-  const left = 12000 - total;
-
+  const left = MONTHLY_BUDGET - total;
   balanceTotal += left;
   settled.push(m);
-
   localStorage.setItem("settledMonths", JSON.stringify(settled));
-  alert("✅ 換月結算完成！\n本月結餘："+left+" 元已加入撲滿");
+  alert("結算完成！本月結餘："+left);
   saveAll();
+}
+
+// 🔥 關鍵：重新計算正確撲滿（根據明細重新算 1～3 月）
+function recalculateBalance() {
+  if (!confirm("確定要依「所有明細」重新計算 1～3 月的正確撲滿嗎？\n將會清除錯亂的 3 萬多，還原正確值")) return;
+
+  // 先歸零
+  balanceTotal = 0;
+  const months = ["2026-01", "2026-02", "2026-03"];
+  months.forEach(m => {
+    const total = rawData
+      .filter(x => getMonthKey(x.date) === m)
+      .reduce((sum, item) => sum + item.me + item.he, 0);
+    const left = MONTHLY_BUDGET - total;
+    if (left > 0) balanceTotal += left;
+  });
+
+  // 也重設已結算月份
+  localStorage.setItem("settledMonths", JSON.stringify(months));
+  saveAll();
+  alert("✅ 正確撲滿計算完成！\n已依據你的明細還原 1～3 月總和");
 }
 
 // 匯出
