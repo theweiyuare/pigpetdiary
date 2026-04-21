@@ -22,7 +22,7 @@ input[type="date"] {
 button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .gray-btn{background:#eee;color:#333}
 
-/* 更小、靠左、直式刪除按鈕 */
+/* 左側直式小刪除按鈕 */
 .del-btn{
   background:#ff9f9f;
   color:#fff;
@@ -87,7 +87,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <div class="total">該月剩餘：<span id="left" class="highlight">12000</span> 元</div>
 
   <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0dce5">
-    <div class="balance"> 🐖餘額存錢筒：<span id="balanceTotal">0</span> 元</div>
+    <div class="balance">🐖 餘額存錢筒：<span id="balanceTotal">0</span> 元</div>
     <div style="font-size:14px;color:#666">每月結餘存入，可正可負可運用</div>
   </div>
 
@@ -102,7 +102,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <input id="datePick" type="date">
 
   <div class="label">店家 / 內容</div>
-  <input id="shop" placeholder="ex：清河鵝肉 / 龜記">
+  <input id="shop" placeholder="ex：清河鵝 / 龜記">
 
   <div class="label">分類</div>
   <select id="cate">
@@ -136,7 +136,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   </div>
 
   <button onclick="add()">新增記錄</button>
-  <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV 備份</button>
+  <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV</button>
   <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（存入存錢筒）</button>
 </div>
 
@@ -146,49 +146,48 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 </div>
 
 <script>
-const STORAGE_KEY = "ourPigLog";
-const BALANCE_KEY = "pigBalanceTotal";
-
-let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-let balanceTotal = +localStorage.getItem(BALANCE_KEY) || 0;
+// ==================== 雲端同步設定 ====================
+const SYNC_URL = "https://pastebin.com/raw/XXXXXX"; // 稍後換成你的
+let rawData = [];
+let balanceTotal = 0;
 let payType = "oneMe";
-
 let currentView = new Date();
 
+// ==================== 日期選擇自動關閉 ====================
 const datePick = document.getElementById("datePick");
 datePick.valueAsDate = new Date();
 datePick.addEventListener("change", () => {
   document.activeElement.blur();
 });
 
+// ==================== 月份翻頁 ====================
 function updateMonthLabel() {
   const y = currentView.getFullYear();
-  const m = String(currentView.getMonth() + 1).padStart(2, '0');
+  const m = String(currentView.getMonth()+1).padStart(2,'0');
   document.getElementById("monthLabel").textContent = `${y}-${m}`;
   render();
 }
-
 function prevMonth() {
-  currentView = new Date(currentView.getFullYear(), currentView.getMonth() - 1, 1);
+  currentView = new Date(currentView.getFullYear(), currentView.getMonth()-1, 1);
   updateMonthLabel();
 }
-
 function nextMonth() {
-  currentView = new Date(currentView.getFullYear(), currentView.getMonth() + 1, 1);
+  currentView = new Date(currentView.getFullYear(), currentView.getMonth()+1, 1);
   updateMonthLabel();
 }
 
+// ==================== 比對月份 ====================
 function getViewMonthKey() {
   const y = currentView.getFullYear();
-  const m = currentView.getMonth() + 1;
-  return `${y}-${String(m).padStart(2, '0')}`;
+  const m = currentView.getMonth()+1;
+  return `${y}-${String(m).padStart(2,'0')}`;
 }
-
 function getMonthKey(dateStr) {
   const d = new Date(dateStr);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
+// ==================== 金額計算 ====================
 function cal() {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m);
@@ -202,6 +201,7 @@ function cal() {
   document.getElementById("balanceTotal").textContent = balanceTotal;
 }
 
+// ==================== 畫面繪製 ====================
 function render() {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m)
@@ -225,6 +225,7 @@ function render() {
   cal();
 }
 
+// ==================== 刪除 ====================
 function del(idx) {
   if(!confirm("確定刪除？")) return;
   const m = getViewMonthKey();
@@ -233,81 +234,103 @@ function del(idx) {
   rawData = rawData.filter(x =>
     !(x.date===item.date && x.shop===item.shop && x.cate===item.cate && x.me===item.me && x.he===item.he)
   );
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rawData));
-  render();
+  syncSave();
 }
 
+// ==================== 付款按鈕 ====================
 const payBtns = document.querySelectorAll(".pay-btn");
 payBtns.forEach(btn => {
   btn.addEventListener("click", () => {
     payBtns.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     payType = btn.dataset.type;
-
-    if (payType === "split") {
-      document.getElementById("singleArea").style.display = "none";
-      document.getElementById("splitArea").style.display = "flex";
-    } else {
-      document.getElementById("singleArea").style.display = "block";
-      document.getElementById("splitArea").style.display = "none";
-    }
+    document.getElementById("singleArea").style.display = (payType==="split")?"none":"block";
+    document.getElementById("splitArea").style.display = (payType==="split")?"flex":"none";
   });
 });
 
+// ==================== 新增 ====================
 function add() {
   const date = document.getElementById("datePick").value;
   const shop = document.getElementById("shop").value.trim();
   const cate = document.getElementById("cate").value;
   let me=0, he=0;
-
-  if(!date) return alert("請選日期");
-  if(!shop) return alert("請填店家");
-
-  if(payType === "oneMe"){
-    me = +document.getElementById("singleAmt").value || 0;
-  }else if(payType === "oneHe"){
-    he = +document.getElementById("singleAmt").value || 0;
-  }else{
-    me = +document.getElementById("amtMe").value || 0;
-    he = +document.getElementById("amtHe").value || 0;
-  }
-
-  if(me + he === 0) return alert("金額不可為0");
-
-  rawData.push({date, shop, cate, me, he});
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rawData));
-
-  document.getElementById("shop").value = "";
-  document.getElementById("singleAmt").value = "";
-  document.getElementById("amtMe").value = "";
-  document.getElementById("amtHe").value = "";
-  render();
+  if(!date)return alert("請選日期");
+  if(!shop)return alert("請填店家");
+  if(payType==="oneMe") me = +document.getElementById("singleAmt").value||0;
+  else if(payType==="oneHe") he = +document.getElementById("singleAmt").value||0;
+  else{ me = +document.getElementById("amtMe").value||0; he = +document.getElementById("amtHe").value||0; }
+  if(me+he===0)return alert("金額不可為0");
+  rawData.push({date,shop,cate,me,he});
+  document.getElementById("shop").value="";
+  document.getElementById("singleAmt").value="";
+  document.getElementById("amtMe").value="";
+  document.getElementById("amtHe").value="";
+  syncSave();
 }
 
+// ==================== 匯出 ====================
 function exportCSV() {
   const header = "日期,店家,分類,我出,他出,總計\n";
-  const rows = rawData.map(x => `${x.date},${x.shop},${x.cate},${x.me},${x.he},${x.me+x.he}`);
-  const blob = new Blob([header + rows.join("\n")], {type:"text/csv"});
+  const rows = rawData.map(x=>`${x.date},${x.shop},${x.cate},${x.me},${x.he},${x.me+x.he}`);
+  const blob = new Blob([header+rows.join("\n")],{type:"text/csv"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href=url; a.download="養豬週記_"+new Date().toISOString().slice(0,10)+".csv";
   a.click();
-  URL.revokeObjectURL(url);
 }
 
+// ==================== 換月結算 ====================
 function manualResetMonth() {
   const m = getViewMonthKey();
-  const list = rawData.filter(x => getMonthKey(x.date) === m);
-  let total=0;
-  list.forEach(x => total += x.me + x.he);
-  const left = 12000 - total;
+  const list = rawData.filter(x=>getMonthKey(x.date)===m);
+  let total=0; list.forEach(x=>total+=x.me+x.he);
+  const left = 12000-total;
   balanceTotal += left;
-  localStorage.setItem(BALANCE_KEY, balanceTotal);
-  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已存入共同存錢筒\n🧧 目前累積："+balanceTotal+" 元");
-  cal();
+  alert("✅ 結算完成！\n本月剩餘："+left+" 元已存入存錢筒\n目前累積："+balanceTotal);
+  syncSave();
 }
 
+// ==================== 雲端同步（核心） ====================
+async function syncLoad() {
+  try {
+    const res = await fetch(SYNC_URL);
+    const text = await res.text();
+    const data = JSON.parse(text);
+    rawData = data.rawData || [];
+    balanceTotal = data.balanceTotal || 0;
+    render();
+  } catch(e) {
+    rawData = [];
+    balanceTotal = 0;
+    render();
+  }
+}
+
+async function syncSave() {
+  const payload = JSON.stringify({ rawData, balanceTotal });
+  await fetch("https://pastebin.com/api/api_post.php", {
+    method: "POST",
+    headers: {"Content-Type":"application/x-www-form-urlencoded"},
+    body: new URLSearchParams({
+      api_dev_key: "PASTE_API_KEY",
+      api_user_key: "",
+      api_paste_code: payload,
+      api_paste_private: "2",
+      api_paste_name: "piglog",
+      api_paste_expire_date: "N",
+      api_option: "paste"
+    })
+  });
+  render();
+}
+
+// 自動同步
+setInterval(syncLoad, 5000);
+
+// ==================== 初始化 ====================
 updateMonthLabel();
+syncLoad();
 </script>
 </body>
 </html>
