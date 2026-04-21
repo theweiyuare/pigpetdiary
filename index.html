@@ -12,17 +12,17 @@ h2{margin-top:4px;color:#c75d77}
 .label{font-size:14px;color:#666;margin-top:8px}
 input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-top:4px;font-size:16px}
 input[type="date"] {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  appearance: none;
+  width:100% !important;
+  max-width:100% !important;
+  box-sizing:border-box !important;
 }
-  button{background:#f06d8a;color:white;font-weight:bold;border:none}
+button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .gray-btn{background:#eee;color:#333}
 .split{display:flex;gap:8px;margin-top:4px}
 .split input{flex:1}
 .total{font-size:17px;font-weight:600;margin:4px 0}
 .highlight{color:#f06d8a}
+.balance{font-size:18px;font-weight:700;color:#e05686}
 .item{padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
 .cat{color:#888;font-size:13px}
 .gray{color:#555}
@@ -34,9 +34,17 @@ input[type="date"] {
   <h2>養豬週記🐽</h2>
   <div class="total">本月預算：<span class="highlight">12,000</span> 元</div>
   <div class="total">已花費：<span id="total" class="highlight">0</span> 元</div>
-  <div class="total">剩餘：<span id="left" class="highlight">12000</span> 元</div>
-  <div class="total gray">我總付：<span id="meTotal">0</span> 元</div>
-  <div class="total gray">他總付：<span id="heTotal">0</span> 元</div>
+  <div class="total">本月剩餘：<span id="left" class="highlight">12000</span> 元</div>
+
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0">
+    <div class="balance">🎁 節日累積結餘：<span id="balanceTotal">0</span> 元</div>
+    <div style="font-size:14px;color:#666;margin-top:4px">可保留到節日使用</div>
+  </div>
+
+  <div style="margin-top:12px;font-size:15px">
+    <div class="gray">我總付：<span id="meTotal">0</span> 元</div>
+    <div class="gray">他總付：<span id="heTotal">0</span> 元</div>
+  </div>
 </div>
 
 <div class="card">
@@ -79,7 +87,7 @@ input[type="date"] {
 
   <button onclick="add()">新增記錄</button>
   <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV 備份</button>
-  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 重設本月統計</button>
+  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（累積餘額）</button>
 </div>
 
 <div class="card">
@@ -90,21 +98,12 @@ input[type="date"] {
 <script>
 const STORAGE_KEY = "ourPigLog";
 const LAST_RESET_KEY = "lastResetMonth";
+const BALANCE_KEY = "pigBalanceTotal";
 
 let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+let balanceTotal = parseInt(localStorage.getItem(BALANCE_KEY)) || 0;
 
-// 今天預設日期
 document.getElementById("datePick").valueAsDate = new Date();
-
-function autoResetIfNewMonth() {
-  const now = new Date();
-  const cy = now.getFullYear(), cm = now.getMonth()+1;
-  const currentKey = `${cy}-${cm}`;
-  const last = localStorage.getItem(LAST_RESET_KEY);
-  if (!last || last !== currentKey) {
-    localStorage.setItem(LAST_RESET_KEY, currentKey);
-  }
-}
 
 function getThisMonthRecords() {
   const now = new Date();
@@ -119,10 +118,15 @@ function cal() {
   const curr = getThisMonthRecords();
   let total = 0, me = 0, he = 0;
   curr.forEach(x => { total += x.me + x.he; me += x.me; he += x.he });
+
+  const budget = 12000;
+  const left = budget - total;
+
   document.getElementById("total").textContent = total;
-  document.getElementById("left").textContent = 12000 - total;
+  document.getElementById("left").textContent = left;
   document.getElementById("meTotal").textContent = me;
   document.getElementById("heTotal").textContent = he;
+  document.getElementById("balanceTotal").textContent = balanceTotal;
 }
 
 function render() {
@@ -201,14 +205,23 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
+// 換月結算 → 本月剩餘併入累積結餘
 function manualResetMonth() {
-  if (!confirm("重設本月統計，不會刪掉紀錄")) return;
   const now = new Date();
+  const curr = getThisMonthRecords();
+  let total = 0;
+  curr.forEach(x => total += x.me + x.he);
+
+  const leftThisMonth = 12000 - total;
+  balanceTotal += leftThisMonth;
+  localStorage.setItem(BALANCE_KEY, balanceTotal);
+
   localStorage.setItem(LAST_RESET_KEY, `${now.getFullYear()}-${now.getMonth()+1}`);
+  alert("✅ 換月完成！\n本月剩餘 " + leftThisMonth + " 元已併入節日結餘\n🎁 目前累積：" + balanceTotal + " 元");
   render();
 }
 
-autoResetIfNewMonth();
+cal();
 render();
 </script>
 </body>
