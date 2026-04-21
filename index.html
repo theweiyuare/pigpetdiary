@@ -11,7 +11,12 @@ body{font-family:system-ui,-apple-system;background:#fff9f9;margin:0;padding:16p
 h2{margin-top:4px;color:#c75d77}
 .label{font-size:14px;color:#666;margin-top:8px}
 input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-top:4px;font-size:16px}
-button{background:#f06d8a;color:white;font-weight:bold;border:none}
+/* 關鍵：修正日期輸入框超出問題 */
+input[type="date"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+  button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .gray-btn{background:#eee;color:#333}
 .split{display:flex;gap:8px;margin-top:4px}
 .split input{flex:1}
