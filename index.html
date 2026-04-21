@@ -22,7 +22,7 @@ input[type="date"] {
 button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .gray-btn{background:#eee;color:#333}
 
-/* 修正版：刪除按鈕 → 右邊、小小的、不搶戲 */
+/* 你調的完美刪除按鈕 */
 .del-btn{
   background:#ff9f9f;
   color:#fff;
@@ -44,7 +44,6 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 .pay-btn{flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f9f9f9;color:#333}
 .pay-btn.active{background:#f06d8a;color:white}
 
-/* 精簡月份箭頭 */
 .month-nav{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0}
 .month-arrow{
   background:#f06d8a;
@@ -90,7 +89,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 
   <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0dce5">
     <div class="balance">🐖 餘額存錢筒：<span id="balanceTotal">0</span> 元</div>
-    <div style="font-size:14px;color:#666">每月結餘存入，可正可負可運用</div>
+    <div style="font-size:14px;color:#666">每月結餘存入，可存可提領</div>
   </div>
 
   <div style="margin-top:12px;font-size:15px">
@@ -122,6 +121,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
     <button class="pay-btn active" data-type="oneMe">我全付</button>
     <button class="pay-btn" data-type="oneHe">他全付</button>
     <button class="pay-btn" data-type="split">兩人分攤</button>
+    <button class="pay-btn" data-type="piggy">🐖存錢筒</button>
   </div>
 
   <div id="singleArea" style="margin-top:12px">
@@ -156,14 +156,12 @@ let balanceTotal = +localStorage.getItem(BALANCE_KEY) || 0;
 let payType = "oneMe";
 let currentView = new Date();
 
-// 日期選擇自動關閉
 const datePick = document.getElementById("datePick");
 datePick.valueAsDate = new Date();
 datePick.addEventListener("change", () => {
   document.activeElement.blur();
 });
 
-// 月份翻頁
 function updateMonthLabel() {
   const y = currentView.getFullYear();
   const m = String(currentView.getMonth() + 1).padStart(2, '0');
@@ -202,7 +200,6 @@ function cal() {
   document.getElementById("balanceTotal").textContent = balanceTotal;
 }
 
-// 修正版：刪除按鈕在右邊
 function render() {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m)
@@ -211,10 +208,12 @@ function render() {
   list.forEach((x, i) => {
     const ds = new Date(x.date);
     const dateStr = `${ds.getMonth()+1}/${ds.getDate()}`;
+    let payLabel = "";
+    if (x.fromPiggy) payLabel = " 🐖";
     html += `
     <div class="item">
       <div>
-        ${dateStr}｜<b>${x.shop}</b>
+        ${dateStr}｜<b>${x.shop}</b>${payLabel}
         <div class="cat">${x.cate}</div>
         我：${x.me}　他：${x.he}
       </div>
@@ -230,6 +229,9 @@ function del(idx) {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m);
   const item = list[idx];
+  if (item.fromPiggy) {
+    balanceTotal += (item.me + item.he);
+  }
   rawData = rawData.filter(x =>
     !(x.date===item.date && x.shop===item.shop && x.cate===item.cate && x.me===item.me && x.he===item.he)
   );
@@ -242,8 +244,13 @@ payBtns.forEach(btn => {
     payBtns.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     payType = btn.dataset.type;
-    document.getElementById("singleArea").style.display = (payType==="split")?"none":"block";
-    document.getElementById("splitArea").style.display = (payType==="split")?"flex":"none";
+    if (payType === "split") {
+      document.getElementById("singleArea").style.display = "none";
+      document.getElementById("splitArea").style.display = "flex";
+    } else {
+      document.getElementById("singleArea").style.display = "block";
+      document.getElementById("splitArea").style.display = "none";
+    }
   });
 });
 
@@ -254,11 +261,26 @@ function add() {
   let me=0, he=0;
   if(!date)return alert("請選日期");
   if(!shop)return alert("請填店家");
-  if(payType==="oneMe") me = +document.getElementById("singleAmt").value||0;
-  else if(payType==="oneHe") he = +document.getElementById("singleAmt").value||0;
-  else{ me = +document.getElementById("amtMe").value||0; he = +document.getElementById("amtHe").value||0; }
-  if(me+he===0)return alert("金額不可為0");
-  rawData.push({date, shop, cate, me, he});
+
+  if(payType==="oneMe"){
+    me = +document.getElementById("singleAmt").value||0;
+  }else if(payType==="oneHe"){
+    he = +document.getElementById("singleAmt").value||0;
+  }else if(payType==="piggy"){
+    const amt = +document.getElementById("singleAmt").value||0;
+    me = amt;
+    he = 0;
+    balanceTotal -= amt;
+  }else{
+    me = +document.getElementById("amtMe").value||0;
+    he = +document.getElementById("amtHe").value||0;
+  }
+
+  if(me+he===0 && payType!=="piggy")return alert("金額不可為0");
+  rawData.push({
+    date, shop, cate, me, he,
+    fromPiggy: payType==="piggy"
+  });
   saveAll();
   document.getElementById("shop").value="";
   document.getElementById("singleAmt").value="";
@@ -272,7 +294,7 @@ function exportCSV() {
   const blob = new Blob([header + rows.join("\n")], {type:"text/csv"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href=url; a.download="養豬週記_"+new Date().toISOString().slice(0,10)+".csv";
+  a.href=url; a.download="養豬日記_"+new Date().toISOString().slice(0,10)+".csv";
   a.click();
 }
 
@@ -282,7 +304,7 @@ function manualResetMonth() {
   let total=0; list.forEach(x => total += x.me + x.he);
   const left = 12000 - total;
   balanceTotal += left;
-  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已存入共同存錢筒\n🧧 目前累積："+balanceTotal+" 元");
+  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已存入餘額存錢筒\n🐖 目前："+balanceTotal+" 元");
   saveAll();
 }
 
