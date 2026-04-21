@@ -138,25 +138,12 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
     <button class="cate-btn" data-cate="其他">其他</button>
   </div>
 
-  <div class="label" style="margin-top:12px">付款方式</div>
-  <div class="pay-row">
-    <button class="pay-btn active" data-type="oneMe">我全付</button>
-    <button class="pay-btn" data-type="oneHe">他全付</button>
-    <button class="pay-btn" data-type="split">兩人分攤</button>
+ <div style="margin-top:12px">
+  <div class="split">
+    <input id="amtMe" placeholder="我出">
+    <input id="amtHe" placeholder="他出">
   </div>
-
-  <div id="singleArea" style="margin-top:12px">
-    <div class="label">金額</div>
-    <input id="singleAmt" type="number" placeholder="輸入金額">
-  </div>
-
-  <div id="splitArea" style="display:none;margin-top:12px">
-    <div class="label"></div>
-    <div class="split">
-      <input id="amtMe" placeholder="我出">
-      <input id="amtHe" placeholder="他出">
-    </div>
-  </div>
+</div>
 
   <button onclick="add()">新增記錄</button>
   <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV</button>
@@ -285,31 +272,27 @@ function del(idx) {
   saveAll();
 }
 
-// 新增
 function add() {
   const date = datePick.value;
   const shop = document.getElementById("shop").value.trim();
   const cate = currentCate;
-  let me=0, he=0;
 
-  if(!date || !shop){ alert("請填完整"); return; }
+  let me = +document.getElementById("amtMe").value || 0;
+  let he = +document.getElementById("amtHe").value || 0;
 
-  if(payType === "oneMe"){
-    me = +document.getElementById("singleAmt").value || 0;
-  }else if(payType === "oneHe"){
-    he = +document.getElementById("singleAmt").value || 0;
-  }else{
-    me = +document.getElementById("amtMe").value || 0;
-    he = +document.getElementById("amtHe").value || 0;
+  if (!date || !shop) {
+    alert("請填完整");
+    return;
+  }
+  if (me + he === 0) {
+    alert("金額不可為0");
+    return;
   }
 
-  if(me + he === 0){ alert("金額不可為0"); return; }
-
-  rawData.push({date, shop, cate, me, he});
+  rawData.push({ date, shop, cate, me, he });
   saveAll();
 
   document.getElementById("shop").value = "";
-  document.getElementById("singleAmt").value = "";
   document.getElementById("amtMe").value = "";
   document.getElementById("amtHe").value = "";
 }
