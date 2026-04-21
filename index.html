@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>養豬週記</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system;background:#fff9f9;margin:0;padding:16px;color:#222}
+.card{background:white;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px #0001}
+h2{margin-top:4px;color:#c75d77}
+.label{font-size:14px;color:#666;margin-top:8px}
+input,select,button{width:100%;padding:12px;border-radius:10px;border:1px solid #ddd;margin-top:4px;font-size:16px}
+button{background:#f06d8a;color:white;font-weight:bold;border:none}
+.gray-btn{background:#eee;color:#333}
+.split{display:flex;gap:8px;margin-top:4px}
+.split input{flex:1}
+.total{font-size:17px;font-weight:600;margin:4px 0}
+.highlight{color:#f06d8a}
+.item{padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:15px}
+.cat{color:#888;font-size:13px}
+.gray{color:#555}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>養豬週記🐽</h2>
+  <div class="total">本月預算：<span class="highlight">12,000</span> 元</div>
+  <div class="total">已花費：<span id="total" class="highlight">0</span> 元</div>
+  <div class="total">剩餘：<span id="left" class="highlight">12000</span> 元</div>
+  <div class="total gray">我總付：<span id="meTotal">0</span> 元</div>
+  <div class="total gray">他總付：<span id="heTotal">0</span> 元</div>
+</div>
+
+<div class="card">
+  <div class="label">日期</div>
+  <input id="datePick" type="date">
+
+  <div class="label">店家 / 內容</div>
+  <input id="shop" placeholder="ex：清河鵝肉 / 龜記">
+
+  <div class="label">分類</div>
+  <select id="cate">
+    <option value="早餐">早餐</option>
+    <option value="午餐">午餐</option>
+    <option value="晚餐">晚餐</option>
+    <option value="水">水</option>
+    <option value="飲料">飲料</option>
+    <option value="加油">加油</option>
+    <option value="其他">其他</option>
+  </select>
+
+  <div class="label">付款方式</div>
+  <select id="payType">
+    <option value="oneMe">我全付</option>
+    <option value="oneHe">他全付</option>
+    <option value="split">兩人湊零錢（分開填）</option>
+  </select>
+
+  <div id="singleArea">
+    <div class="label">金額</div>
+    <input id="singleAmt" type="number" placeholder="輸入金額">
+  </div>
+
+  <div id="splitArea" style="display:none">
+    <div class="label">我出 / 他出</div>
+    <div class="split">
+      <input id="amtMe" type="number" placeholder="我出">
+      <input id="amtHe" type="number" placeholder="他出">
+    </div>
+  </div>
+
+  <button onclick="add()">新增記錄</button>
+  <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV 備份</button>
+  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 重設本月統計</button>
+</div>
+
+<div class="card">
+  <h3>📝 記錄（本月）</h3>
+  <div id="list"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "ourPigLog";
+const LAST_RESET_KEY = "lastResetMonth";
+
+let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+// 今天預設日期
+document.getElementById("datePick").valueAsDate = new Date();
+
+function autoResetIfNewMonth() {
+  const now = new Date();
+  const cy = now.getFullYear(), cm = now.getMonth()+1;
+  const currentKey = `${cy}-${cm}`;
+  const last = localStorage.getItem(LAST_RESET_KEY);
+  if (!last || last !== currentKey) {
+    localStorage.setItem(LAST_RESET_KEY, currentKey);
+  }
+}
+
+function getThisMonthRecords() {
+  const now = new Date();
+  const cy = now.getFullYear(), cm = now.getMonth();
+  return rawData.filter(x => {
+    const d = new Date(x.date);
+    return d.getFullYear() === cy && d.getMonth() === cm;
+  });
+}
+
+function cal() {
+  const curr = getThisMonthRecords();
+  let total = 0, me = 0, he = 0;
+  curr.forEach(x => { total += x.me + x.he; me += x.me; he += x.he });
+  document.getElementById("total").textContent = total;
+  document.getElementById("left").textContent = 12000 - total;
+  document.getElementById("meTotal").textContent = me;
+  document.getElementById("heTotal").textContent = he;
+}
+
+function render() {
+  const curr = getThisMonthRecords().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  let html = "";
+  curr.forEach(x => {
+    const d = new Date(x.date);
+    const dateStr = `${d.getMonth()+1}/${d.getDate()}`;
+    html += `
+    <div class="item">
+      ${dateStr}｜<b>${x.shop}</b>
+      <div class="cat">${x.cate}</div>
+      我：${x.me}　他：${x.he}
+    </div>`;
+  });
+  document.getElementById("list").innerHTML = html;
+  cal();
+}
+
+const payType = document.getElementById("payType");
+const singleArea = document.getElementById("singleArea");
+const splitArea = document.getElementById("splitArea");
+payType.addEventListener("change", () => {
+  if (payType.value === "split") {
+    singleArea.style.display = "none";
+    splitArea.style.display = "block";
+  } else {
+    singleArea.style.display = "block";
+    splitArea.style.display = "none";
+  }
+});
+
+function add() {
+  const date = document.getElementById("datePick").value;
+  const shop = document.getElementById("shop").value.trim();
+  const cate = document.getElementById("cate").value;
+  const type = payType.value;
+  let me = 0, he = 0;
+
+  if (!date) return alert("請選日期");
+  if (!shop) return alert("請填店家");
+
+  if (type === "oneMe") {
+    me = parseInt(document.getElementById("singleAmt").value) || 0;
+  } else if (type === "oneHe") {
+    he = parseInt(document.getElementById("singleAmt").value) || 0;
+  } else {
+    me = parseInt(document.getElementById("amtMe").value) || 0;
+    he = parseInt(document.getElementById("amtHe").value) || 0;
+  }
+
+  if (me + he === 0) return alert("金額不能為0");
+
+  rawData.push({ date, shop, cate, me, he });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rawData));
+
+  document.getElementById("shop").value = "";
+  document.getElementById("singleAmt").value = "";
+  document.getElementById("amtMe").value = "";
+  document.getElementById("amtHe").value = "";
+  render();
+}
+
+function exportCSV() {
+  const header = "日期,店家,分類,我出,他出,總計\n";
+  const rows = rawData.map(x => {
+    const sum = x.me + x.he;
+    return `${x.date},${x.shop},${x.cate},${x.me},${x.he},${sum}`;
+  }).join("\n");
+  const blob = new Blob([header + rows], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "養豬週記_" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function manualResetMonth() {
+  if (!confirm("重設本月統計，不會刪掉紀錄")) return;
+  const now = new Date();
+  localStorage.setItem(LAST_RESET_KEY, `${now.getFullYear()}-${now.getMonth()+1}`);
+  render();
+}
+
+autoResetIfNewMonth();
+render();
+</script>
+</body>
+</html>
