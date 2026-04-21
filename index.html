@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>養豬日記 🐽</title>
+<title>🐽養豬日記</title>
 <style>
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system;background:#fff9f9;margin:0;padding:16px;color:#222}
@@ -75,7 +75,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 <body>
 
 <div class="card">
-  <h2>養豬日記 🐽</h2>
+  <h2>🐽養豬日記</h2>
 
   <div class="month-nav">
     <button class="month-arrow" onclick="prevMonth()">＜</button>
@@ -88,8 +88,8 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
   <div class="total">該月剩餘：<span id="left" class="highlight">12000</span> 元</div>
 
   <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0dce5">
-    <div class="balance">🐖 餘額存錢筒：<span id="balanceTotal">0</span> 元</div>
-    <div style="font-size:14px;color:#666">每月結餘存入，可存可提領</div>
+    <div class="balance">🐖結餘累計撲滿：<span id="balanceTotal">0</span> 元</div>
+    <div style="font-size:14px;color:#666">每月結餘累積，節日超支可抵用</div>
   </div>
 
   <div style="margin-top:12px;font-size:15px">
@@ -121,7 +121,6 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
     <button class="pay-btn active" data-type="oneMe">我全付</button>
     <button class="pay-btn" data-type="oneHe">他全付</button>
     <button class="pay-btn" data-type="split">兩人分攤</button>
-    <button class="pay-btn" data-type="piggy">🐖存錢筒</button>
   </div>
 
   <div id="singleArea" style="margin-top:12px">
@@ -139,7 +138,7 @@ button{background:#f06d8a;color:white;font-weight:bold;border:none}
 
   <button onclick="add()">新增記錄</button>
   <button class="gray-btn" onclick="exportCSV()" style="margin-top:8px">📤 匯出 CSV 備份</button>
-  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（存入存錢筒）</button>
+  <button class="gray-btn" onclick="manualResetMonth()" style="margin-top:4px">🔄 換月結算（累積墊底）</button>
 </div>
 
 <div class="card">
@@ -208,12 +207,10 @@ function render() {
   list.forEach((x, i) => {
     const ds = new Date(x.date);
     const dateStr = `${ds.getMonth()+1}/${ds.getDate()}`;
-    let payLabel = "";
-    if (x.fromPiggy) payLabel = " 🐖";
     html += `
     <div class="item">
       <div>
-        ${dateStr}｜<b>${x.shop}</b>${payLabel}
+        ${dateStr}｜<b>${x.shop}</b>
         <div class="cat">${x.cate}</div>
         我：${x.me}　他：${x.he}
       </div>
@@ -229,9 +226,6 @@ function del(idx) {
   const m = getViewMonthKey();
   const list = rawData.filter(x => getMonthKey(x.date) === m);
   const item = list[idx];
-  if (item.fromPiggy) {
-    balanceTotal += (item.me + item.he);
-  }
   rawData = rawData.filter(x =>
     !(x.date===item.date && x.shop===item.shop && x.cate===item.cate && x.me===item.me && x.he===item.he)
   );
@@ -266,21 +260,13 @@ function add() {
     me = +document.getElementById("singleAmt").value||0;
   }else if(payType==="oneHe"){
     he = +document.getElementById("singleAmt").value||0;
-  }else if(payType==="piggy"){
-    const amt = +document.getElementById("singleAmt").value||0;
-    me = amt;
-    he = 0;
-    balanceTotal -= amt;
   }else{
     me = +document.getElementById("amtMe").value||0;
     he = +document.getElementById("amtHe").value||0;
   }
 
-  if(me+he===0 && payType!=="piggy")return alert("金額不可為0");
-  rawData.push({
-    date, shop, cate, me, he,
-    fromPiggy: payType==="piggy"
-  });
+  if(me+he===0)return alert("金額不可為0");
+  rawData.push({date, shop, cate, me, he});
   saveAll();
   document.getElementById("shop").value="";
   document.getElementById("singleAmt").value="";
@@ -304,7 +290,7 @@ function manualResetMonth() {
   let total=0; list.forEach(x => total += x.me + x.he);
   const left = 12000 - total;
   balanceTotal += left;
-  alert("✅ 換月結算完成！\n本月剩餘："+left+" 元已存入餘額存錢筒\n🐖 目前："+balanceTotal+" 元");
+  alert("✅ 換月結算！\n本月結餘："+left+" 元已累積為墊底額度\n🧧 目前總累積："+balanceTotal+" 元");
   saveAll();
 }
 
