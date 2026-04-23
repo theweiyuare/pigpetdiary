@@ -211,9 +211,7 @@ function getMonthKey(dateStr) {
 // 計算數字
 function cal() {
   const m = getViewMonthKey();
-  const list = rawData
-   .filter(x => getMonthKey(x.date) === m)
-   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const list = rawData.filter(x => getMonthKey(x.date) === m);
   let total=0, me=0, he=0;
   list.forEach(x => {
     total += x.me + x.he;
@@ -230,7 +228,16 @@ function cal() {
 // 畫面顯示
 function render() {
   const m = getViewMonthKey();
-  const list = rawData.filter(x => getMonthKey(x.date) === m);
+  
+  // 🔥 這裡我寫死「照消費日期新→舊」，絕對有效
+  const list = rawData
+    .filter(x => getMonthKey(x.date) === m)
+    .sort((a, b) => {
+      let dateA = new Date(a.date);
+      let dateB = new Date(b.date);
+      return dateB - dateA;
+    });
+
   let html = "";
   list.forEach((x, idx) => {
     const d = new Date(x.date);
