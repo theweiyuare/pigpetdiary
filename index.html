@@ -211,9 +211,9 @@ function getMonthKey(dateStr) {
 // 計算數字
 function cal() {
   const m = getViewMonthKey();
-  // 過濾當月 + 自動依照日期「新→舊」排序
-　const list = rawData.filter(x => getMonthKey(x.date) === m)
-  　.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const list = rawData
+   .filter(x => getMonthKey(x.date) === m)
+   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   let total=0, me=0, he=0;
   list.forEach(x => {
     total += x.me + x.he;
