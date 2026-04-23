@@ -211,7 +211,9 @@ function getMonthKey(dateStr) {
 // 計算數字
 function cal() {
   const m = getViewMonthKey();
-  const list = rawData.filter(x => getMonthKey(x.date) === m);
+  // 過濾當月 + 自動依照日期「新→舊」排序
+　const list = rawData.filter(x => getMonthKey(x.date) === m)
+  　.sort((a, b) => new Date(b.date) - new Date(a.date));
   let total=0, me=0, he=0;
   list.forEach(x => {
     total += x.me + x.he;
@@ -340,18 +342,26 @@ function recalculateBalance() {
 }
 
 
-// 匯出
+// 只匯出「目前查看的該月份」，並依日期舊→新排序
 function exportCSV() {
+  const m = getViewMonthKey();
+  // 篩選當月 + 舊到新排序
+  const monthList = rawData
+    .filter(x => getMonthKey(x.date) === m)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
   const header = "日期,店家,分類,我出,他出,總計\n";
-  const rows = rawData.map(x => `${x.date},${x.shop},${x.cate},${x.me},${x.he},${x.me+x.he}`);
+  const rows = monthList.map(x => 
+    `${x.date},${x.shop},${x.cate},${x.me},${x.he},${x.me+x.he}`
+  );
+
   const blob = new Blob([header + rows.join("\n")], {type:"text/csv"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "養豬日記.csv";
+  a.download = `養豬日記_${m}.csv`;
   a.click();
 }
-
 updateMonthLabel();
 </script>
 </body>
